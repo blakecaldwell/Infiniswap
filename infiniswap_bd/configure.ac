@@ -99,7 +99,7 @@ if test "$MLNX_OFED" = "true"; then
 AC_MSG_RESULT(yes)
 
 # Whether MLNX_OFED for ubuntu has been installed
-MLNX_OFED_IB_UBUNTU_INSTALLED=`if dpkg -s mlnx-ofed-kernel-dkms >/dev/null 2>/dev/null; then echo true; else echo false; fi`
+MLNX_OFED_IB_UBUNTU_INSTALLED=`if dpkg -s mlnx-ofed-kernel-modules >/dev/null 2>/dev/null; then echo true; else echo false; fi`
 
 # Whether MLNX_OFED for RedHat has been installed
 MLNX_OFED_IB_RH_INSTALLED=`if rpm -q mlnx-ofa_kernel-devel >&/dev/null; then echo true; else echo false; fi`
@@ -110,9 +110,9 @@ MLNX_OFED_IB_RH_INSTALLED=`if rpm -q kernel-ib-devel >&/dev/null; then echo true
 fi
 
 if test "$MLNX_OFED_IB_UBUNTU_INSTALLED" = "true"; then
-OFED_VERS=`dpkg -s mlnx-ofed-kernel-dkms | awk -F\- '/Version/ {print $1}' | awk '{print $2}'`
-OFED_CFLAGS=`echo -I/var/lib/dkms/mlnx-ofed-kernel/$OFED_VERS/build/include -include /var/lib/dkms/mlnx-ofed-kernel/$OFED_VERS/build/include/linux/compat-2.6.h`
-RDMA_SYMVERS=`echo $RDMA_SYMVERS /var/lib/dkms/mlnx-ofed-kernel/$OFED_VERS/build/Module.symvers`
+OFED_VERS=`dpkg -s mlnx-ofed-kernel-modules | awk -F\- '/Version/ {print $1}' | awk '{print $2}'`
+OFED_CFLAGS=`echo -I/usr/src/ofa_kernel/default/include -include /usr/src/ofa_kernel/default/include/linux/compat-2.6.h`
+RDMA_SYMVERS=`echo $RDMA_SYMVERS /usr/src/ofa_kernel/default/Module.symvers`
 fi
 
 if test "$MLNX_OFED_IB_RH_INSTALLED" = "true"; then
