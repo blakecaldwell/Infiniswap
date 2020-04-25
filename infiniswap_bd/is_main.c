@@ -172,7 +172,7 @@ int IS_rdma_read(struct IS_connection *IS_conn, struct kernel_cb *cb, int cb_ind
 	ctx->rdma_sq_wr.wr.rdma.remote_addr = chunk->remote_addr + offset;
 	ctx->rdma_sq_wr.opcode = IB_WR_RDMA_READ;
 	#endif	
-	ret = ib_post_send(cb->qp, (struct ib_send_wr *) &ctx->rdma_sq_wr, &bad_wr);
+	ret = ib_post_send(cb->qp, (struct ib_send_wr *) &ctx->rdma_sq_wr, (const struct ib_send_wr **) &bad_wr);
 
 	if (ret) {
 		printk(KERN_ALERT PFX "client post read %d, wr=%p\n", ret, &ctx->rdma_sq_wr);
@@ -278,7 +278,7 @@ int IS_rdma_write(struct IS_connection *IS_conn, struct kernel_cb *cb, int cb_in
 	ctx->rdma_sq_wr.wr.rdma.remote_addr = chunk->remote_addr + offset;
 	ctx->rdma_sq_wr.opcode = IB_WR_RDMA_WRITE;
 #endif
-	ret = ib_post_send(cb->qp, (struct ib_send_wr *) &ctx->rdma_sq_wr, &bad_wr);
+	ret = ib_post_send(cb->qp, (struct ib_send_wr *) &ctx->rdma_sq_wr, (const struct ib_send_wr **) &bad_wr);
 	if (ret) {
 		printk(KERN_ALERT PFX "client post write %d, wr=%p\n", ret, &ctx->rdma_sq_wr);
 		return ret;
@@ -316,7 +316,7 @@ static int IS_send_activity(struct kernel_cb *cb)
 			cb->send_buf.buf[i] = 0;	
 		}
 	}
-	ret = ib_post_send(cb->qp,  &cb->sq_wr, &bad_wr);
+	ret = ib_post_send(cb->qp,  &cb->sq_wr, (const struct ib_send_wr **) &bad_wr);
 	if (ret) {
 		printk(KERN_ERR PFX "ACTIVITY MSG send error %d\n", ret);
 		return ret;
@@ -330,7 +330,7 @@ static int IS_send_query(struct kernel_cb *cb)
 	struct ib_send_wr * bad_wr;
 
 	cb->send_buf.type = QUERY;
-	ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
+	ret = ib_post_send(cb->qp, &cb->sq_wr, (const struct ib_send_wr **) &bad_wr);
 	if (ret) {
 		printk(KERN_ERR PFX "QUERY MSG send error %d\n", ret);
 		return ret;
@@ -344,7 +344,7 @@ static int IS_send_bind_single(struct kernel_cb *cb, int select_chunk)
 	cb->send_buf.type = BIND_SINGLE;
 	cb->send_buf.size_gb = select_chunk; 
 
-	ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
+	ret = ib_post_send(cb->qp, &cb->sq_wr, (const struct ib_send_wr **) &bad_wr);
 	if (ret) {
 		printk(KERN_ERR PFX "BIND_SINGLE MSG send error %d\n", ret);
 		return ret;
@@ -358,7 +358,7 @@ static int IS_send_done(struct kernel_cb *cb, int num)
 	struct ib_send_wr * bad_wr;
 	cb->send_buf.type = DONE;
 	cb->send_buf.size_gb = num;
-	ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
+	ret = ib_post_send(cb->qp, &cb->sq_wr, (const struct ib_send_wr **) &bad_wr);
 	if (ret) {
 		printk(KERN_ERR PFX "DONE MSG send error %d\n", ret);
 		return ret;
@@ -897,7 +897,7 @@ static void rdma_cq_event_handler(struct ib_cq * cq, void *ctx)
 		}	
 		switch (wc.opcode){
 			case IB_WC_RECV:
-				ret = ib_post_recv(cb->qp, &cb->rq_wr, &bad_wr);
+				ret = ib_post_recv(cb->qp, &cb->rq_wr, (const struct ib_recv_wr **) &bad_wr);
 				if (ret) {
 					printk(KERN_ERR PFX "post recv error: %d\n", 
 					       ret);
@@ -1463,7 +1463,7 @@ static int rdma_connect_down(struct kernel_cb *cb)
 	struct ib_recv_wr *bad_wr;
 	int ret;
 
-	ret = ib_post_recv(cb->qp, &cb->rq_wr, &bad_wr); 
+	ret = ib_post_recv(cb->qp, &cb->rq_wr, (const struct ib_recv_wr **) &bad_wr); 
 	if (ret) {
 		printk(KERN_ERR PFX "ib_post_recv failed: %d\n", ret);
 		goto err;
