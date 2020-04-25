@@ -188,7 +188,11 @@ void stackbd_bio_generate(struct rdma_ctx *ctx, struct request *req)
 	unsigned int nr_segs = req->nr_phys_segments;
 	unsigned int io_size = nr_segs * IS_PAGE_SIZE;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+	cloned_bio = bio_clone_bioset(req->bio, GFP_ATOMIC, fs_bio_set);
+#else
 	cloned_bio = bio_clone(req->bio, GFP_ATOMIC); 
+#endif
 	pg = virt_to_page(ctx->rdma_buf);
 	cloned_bio->bi_io_vec->bv_page  = pg; 
 	cloned_bio->bi_io_vec->bv_len = io_size;
@@ -775,6 +779,7 @@ static int client_recv(struct kernel_cb *cb, struct ib_wc *wc)
 		printk(KERN_ERR PFX "cb is not connected\n");	
 		return -1;
 	}
+        pr_info(PFX "message size = %lu\n", sizeof(cb->recv_buf));
 	switch(cb->recv_buf.type){
 		case FREE_SIZE:
 			cb->remote_chunk.target_size_g = cb->recv_buf.size_gb;
@@ -799,7 +804,8 @@ static int client_recv(struct kernel_cb *cb, struct ib_wc *wc)
 			client_recv_stop(cb);
 			break;
 		default:
-			pr_info(PFX "client receives unknown msg\n");
+			pr_info(PFX "client receives unknown msg type %d\n", cb->recv_buf.type);
+			pr_info(PFX "client receives unknown msg size %d\n", cb->recv_buf.size_gb);
 			return -1; 	
 	}
 	return 0;
@@ -891,16 +897,15 @@ static void rdma_cq_event_handler(struct ib_cq * cq, void *ctx)
 		}	
 		switch (wc.opcode){
 			case IB_WC_RECV:
-				ret = client_recv(cb, &wc);
-				if (ret) {
-					printk(KERN_ERR PFX "recv wc error: %d\n", ret);
-					goto error;
-				}
-
 				ret = ib_post_recv(cb->qp, &cb->rq_wr, &bad_wr);
 				if (ret) {
 					printk(KERN_ERR PFX "post recv error: %d\n", 
 					       ret);
+					goto error;
+				}
+				ret = client_recv(cb, &wc);
+				if (ret) {
+					printk(KERN_ERR PFX "recv wc error: %d\n", ret);
 					goto error;
 				}
 				if (cb->state == RDMA_BUF_ADV || cb->state == FREE_MEM_RECV || cb->state == WAIT_OPS){

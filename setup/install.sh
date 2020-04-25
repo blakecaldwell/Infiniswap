@@ -8,7 +8,7 @@ fi
 # block device options
 #have the kernel patch for lookup_bdev()
 #(HAVE_LOOKUP_BDEV_PATCH), default is undefined
-have_lookup_bdev_patch=0
+have_lookup_bdev_patch=1
 
 #max page number in a single struct request (swap IO request),
 #(MAX_SGL_LEN), default is 1 (<4.4.0), 32 (>=4.4.0)
@@ -20,11 +20,11 @@ bio_page_cap=32
 
 #max remote memory size from one server 
 #(MAX_MR_SIZE_GB), default is 32
-max_remote_memory=32    #also for daemon
+max_remote_memory=48    #also for daemon
 
 #stackbd (backup) disk size, also the total size of remote memory of this bd
 #(STACKBD_SIZE), default is 12
-stackbd_size=12
+stackbd_size=32
 
 #name of stackbd disk
 #(STACKBD_NAME), default is "stackbd"
@@ -32,7 +32,7 @@ stackbd_name="stackbd"
 
 #name of physical backup disk
 #(BACKUP_DISK), default is "/dev/sda4"
-backup_disk="/dev/sda4"
+backup_disk="/dev/sdb"
 
 #number of queried server in looking for remote memory
 #(SERVER_SELECT_NUM), default is 1
@@ -47,7 +47,7 @@ max_client=32
 
 #maximum size (in GB) of remote memory this daemon can provide
 #(MAX_FREE_MEM_GB, MAX_MR_SIZE_GB), default is 32
-#max_remote_memory=
+max_remote_memory=48
 
 #lower threshold of host free memory to evict remote memory chunks
 #(FREE_MEM_EVICT_THRESHOLD), default is 8

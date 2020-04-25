@@ -88,13 +88,18 @@ static void stackbd_io_fn(struct bio *bio)
 	if (bio == NULL)
         printk("bio is NULL\n");
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+	bio_set_dev(bio, stackbd.bdev_raw);
+	trace_block_bio_remap(bdev_get_queue(stackbd.bdev_raw), bio, bio_dev(bio),
+#else
 	bio->bi_bdev = stackbd.bdev_raw;
 	trace_block_bio_remap(bdev_get_queue(stackbd.bdev_raw), bio, bio->bi_bdev->bd_dev, 
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
 	bio->bi_iter.bi_sector);
 #else
 	bio->bi_sector);
-#endif 
+#endif
 	
 	generic_make_request(bio);
 }
@@ -162,11 +167,19 @@ void stackbd_make_request4(struct request_queue *q, struct request *req)
         goto abort;
     }
     for (i=0; i<len -1; i++){
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+    	bio = bio_clone_bioset(b, GFP_ATOMIC, fs_bio_set);
+#else
     	bio = bio_clone(b, GFP_ATOMIC);
+#endif
     	bio_list_add(&stackbd.bio_list, bio);
     	b = b->bi_next;
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+    bio = bio_clone_bioset(b, GFP_ATOMIC, fs_bio_set);
+#else
     bio = bio_clone(b, GFP_ATOMIC);
+#endif
 	bio->bi_end_io = (bio_end_io_t*)IS_stackbd_end_io2;
 	bio->bi_private = (void*) uint64_from_ptr(req);
     bio_list_add(&stackbd.bio_list, bio);
@@ -199,7 +212,11 @@ void stackbd_make_request3(struct request_queue *q, struct request *req)
         goto abort;
     }
     for (i=0; i<len; i++){
-    	bio = bio_clone(b, GFP_ATOMIC);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+        bio = bio_clone_bioset(b, GFP_ATOMIC, fs_bio_set);
+#else
+        bio = bio_clone(b, GFP_ATOMIC);
+#endif
     	bio_list_add(&stackbd.bio_list, bio);
     	b = b->bi_next;
 	}
@@ -231,11 +248,19 @@ void stackbd_make_request2(struct request_queue *q, struct request *req)
         goto abort;
     }
     for (i=0; i<len -1; i++){
-    	bio = bio_clone(b, GFP_ATOMIC);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+        bio = bio_clone_bioset(b, GFP_ATOMIC, fs_bio_set);
+#else
+        bio = bio_clone(b, GFP_ATOMIC);
+#endif
     	bio_list_add(&stackbd.bio_list, bio);
     	b = b->bi_next;
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+    bio = bio_clone_bioset(b, GFP_ATOMIC, fs_bio_set);
+#else
     bio = bio_clone(b, GFP_ATOMIC);
+#endif
 	bio->bi_end_io = (bio_end_io_t*)IS_stackbd_end_io;
 	bio->bi_private = (void*) uint64_from_ptr(req);
     bio_list_add(&stackbd.bio_list, bio);
@@ -537,7 +562,9 @@ static int IS_request(struct request *req, struct IS_queue *xq)
 	return err;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+static blk_status_t IS_queue_rq(struct blk_mq_hw_ctx *hctx, const struct blk_mq_queue_data *bd)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 static int IS_queue_rq(struct blk_mq_hw_ctx *hctx, const struct blk_mq_queue_data *bd)
 #elif LINUX_VERSION_CODE == KERNEL_VERSION(3, 18, 0)
 static int IS_queue_rq(struct blk_mq_hw_ctx *hctx, struct request *rq, bool last)
@@ -555,15 +582,22 @@ static int IS_queue_rq(struct blk_mq_hw_ctx *hctx, struct request *rq)
 	err = IS_request(rq, IS_q);
 
 	if (unlikely(err)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 		rq->errors = -EIO;
 		return BLK_MQ_RQ_QUEUE_ERROR;
+#else
+		return BLK_STS_IOERR;
+#endif
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
 	blk_mq_start_request(rq);
 #endif
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	return BLK_MQ_RQ_QUEUE_OK;
+#else
+	return BLK_STS_OK;
+#endif
 }
 
 // connect hctx with IS-file, IS-conn, and queue
@@ -585,6 +619,7 @@ static int IS_init_hctx(struct blk_mq_hw_ctx *hctx, void *data,
 }
 
 static struct blk_mq_ops IS_mq_ops = {
+
 	.queue_rq       = IS_queue_rq,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
